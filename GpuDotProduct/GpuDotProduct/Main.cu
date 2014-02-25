@@ -24,4 +24,28 @@ __global__ void dot(float *a, float *b, float *c)
 	__syncthreads();
 
 	int i = blockDim.x / 2;
+	while(i != 0)
+	{
+		if(cacheIndex < i)
+		{
+			cache[cacheIndex] +=  cache[cacheIndex + i];
+			__syncthreads();
+			i /= 2;
+		}
+		if(cacheIndex == 0)
+		{
+			c[blockIdx.x] = cache[0];
+		}
+	}
+}
+
+int main(void)
+{
+	float *a, *b, c, *partial_c;
+	float *dev_a, *dev_b, *dev_partial_c;
+
+	a = (float*)malloc(N*sizeof(float));
+	b = (float*)malloc(N*sizeof(float));
+	partial_c = (float*)malloc(blocksPerGrid * sizeof(float));
+	
 }
