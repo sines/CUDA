@@ -1,8 +1,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <cpu_bitmap.h>
 #include <helper_cuda.h>
-#include <stdio.h>
+#include <iostream>
 
 
 #include"device_launch_parameters.h"
@@ -12,7 +11,7 @@
 
 
 #define imin(a,b) (a<b?a:b)
-#define  sum_squares(x)	(x*(x+1)*(2*x+1)/6)
+#define sum_squares(x) (x*(x+1)*(2*x+1)/6)
 
 const int N = 33 * 1024;
 const int threadsPerBlock = 256;
@@ -42,8 +41,9 @@ __global__ void dot(float *a, float *b, float *c)
 		{
 			cache[cacheIndex] +=  cache[cacheIndex + i];
 		}
-		i /= 2;
+	
 		__syncthreads();
+			i /= 2;
 		if(cacheIndex == 0)
 		{
 			c[blockIdx.x] = cache[0];
@@ -81,8 +81,8 @@ int main(void)
 		c += partial_c[i];
 	}
 
-
-	private("Does GPU value %.6g = %.6g?\n", c, 2 * sum_squares((float)(N-1)));
+	int sq = sum_squares((float)(N-1));
+	printf("Does GPU value %.6g = %.6g\n", c, 2 * sq);
 	cudaFree(dev_a);
 	cudaFree(dev_b);
 	cudaFree(dev_partial_c);
@@ -90,5 +90,7 @@ int main(void)
 	free(a);
 	free(b);
 	free(partial_c);
+	system("pause");
 
+	return 0;
 }
