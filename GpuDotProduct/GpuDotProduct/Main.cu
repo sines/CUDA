@@ -1,7 +1,18 @@
-#include"cuda_runtime.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cpu_bitmap.h>
+#include <helper_cuda.h>
+#include <stdio.h>
+
+
 #include"device_launch_parameters.h"
 
+#pragma comment( lib, "cudart" )
+#pragma comment( lib, "kernel32" )
+
+
 #define imin(a,b) (a<b?a:b)
+#define  sum_squares(x)	(x*(x+1)*(2*x+1)/6)
 
 const int N = 33 * 1024;
 const int threadsPerBlock = 256;
@@ -21,6 +32,7 @@ __global__ void dot(float *a, float *b, float *c)
 	}
 
 	cache[cacheIndex] = temp;
+
 	__syncthreads();
 
 	int i = blockDim.x / 2;
@@ -29,9 +41,9 @@ __global__ void dot(float *a, float *b, float *c)
 		if(cacheIndex < i)
 		{
 			cache[cacheIndex] +=  cache[cacheIndex + i];
-			__syncthreads();
-			i /= 2;
 		}
+		i /= 2;
+		__syncthreads();
 		if(cacheIndex == 0)
 		{
 			c[blockIdx.x] = cache[0];
@@ -47,5 +59,36 @@ int main(void)
 	a = (float*)malloc(N*sizeof(float));
 	b = (float*)malloc(N*sizeof(float));
 	partial_c = (float*)malloc(blocksPerGrid * sizeof(float));
+	checkCudaErrors(cudaMalloc((void**) &dev_a, N*sizeof(float)));
+	checkCudaErrors(cudaMalloc((void**) &dev_b, N*sizeof(float)));
+	checkCudaErrors(cudaMalloc((void**) &dev_partial_c, N*sizeof(float)));
 	
+	for (int i =0; i < N; i++)
+	{
+		a[i] = i;
+		b[i] = i * 2;
+	}
+
+	checkCudaErrors(cudaMemcpy(dev_a, a, N*sizeof(float), cudaMemcpyHostToDevice));
+	checkCudaErrors(cudaMemcpy(dev_b, b, N*sizeof(float), cudaMemcpyHostToDevice));
+	dot<<<blocksPerGrid, threadsPerBlock>>>(dev_a, dev_b, dev_partial_c);
+
+	checkCudaErrors(cudaMemcpy(partial_c, dev_partial_c, blocksPerGrid * sizeof(float), cudaMemcpyDeviceToHost));
+
+	c = 0;
+	for (int i = 0; i < blocksPerGrid; i++)
+	{
+		c += partial_c[i];
+	}
+
+
+	private("Does GPU value %.6g = %.6g?\n", c, 2 * sum_squares((float)(N-1)));
+	cudaFree(dev_a);
+	cudaFree(dev_b);
+	cudaFree(dev_partial_c);
+
+	free(a);
+	free(b);
+	free(partial_c);
+
 }
