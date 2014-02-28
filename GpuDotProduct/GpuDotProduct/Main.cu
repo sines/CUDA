@@ -14,8 +14,10 @@
 #define sum_squares(x) (x*(x+1)*(2*x+1)/6)
 
 const int N = 33 * 1024;
-const int threadsPerBlock = 256;
-const int blocksPerGrid = imin(32, (N + threadsPerBlock -1) / threadsPerBlock);
+const int threadsPerBlock = 512;
+
+const int blocksPerGrid = imin(512, (N + threadsPerBlock -1) / threadsPerBlock);
+
 __global__ void dot(float *a, float *b, float *c)
 {
 	__shared__ float cache[threadsPerBlock];
@@ -66,7 +68,7 @@ int main(void)
 	for (int i =0; i < N; i++)
 	{
 		a[i] = i;
-		b[i] = i * 2;
+		b[i] = 2 *i;
 	}
 
 	checkCudaErrors(cudaMemcpy(dev_a, a, N*sizeof(float), cudaMemcpyHostToDevice));
@@ -81,8 +83,8 @@ int main(void)
 		c += partial_c[i];
 	}
 
-	int sq = sum_squares((float)(N-1));
-	printf("Does GPU value %.6g = %.6g\n", c, 2 * sq);
+
+	printf("Does GPU value %.3f = %.3f ÊÇ·ñÏàµÈ?\n", c, (float)(2*sum_squares((float)(N-1))));
 	cudaFree(dev_a);
 	cudaFree(dev_b);
 	cudaFree(dev_partial_c);
